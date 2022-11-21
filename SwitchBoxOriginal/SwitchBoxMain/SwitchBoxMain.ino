@@ -1,33 +1,41 @@
 
+//Const
 const boolean debug = true;// デバッグ用フラグ
-
 /*
  ピンの番号を設定
 */
-const int switchPin0 = 0;
-const int switchPin1 = 1;
-const int switchPin2 = 2;
-const int switchPin3 = 3;
-const int switchPin4 = 4;
-const int switchPin5 = 5;
-const int switchPin6 = 6;
-const int switchPin7 = 7;
+//const int switchPinOne = 0;
+//const int switvhPinTow = 10;
 
-const int rotoryswitch1N = 8;
-const int rotoryswitch1A = 9;
-const int rotoryswitch2N = 10;
-const int rotoryswitch2A = 11;
-const int rotoryswitch3N = 12;
-const int rotoryswitch3A = 13;
-const int rotoryswitch4N = 19;
-const int rotoryswitch4A = 20;
-const int rotoryswitch5N = 21;
-const int rotoryswitch5A = 22;
-const int rotoryswitch6N = 23;
-const int rotoryswitch6A = 24;
+/*
+　マトリックスで使用しているピン番号を設定
+*/
+//const int matrixPinInputNo[] = {4,5,6,7};
+//const int matrixPinOutputNo[] = {0,1,2,3};
+const int matrixPinInputNo[] = {0,1,2,3};
+const int matrixPinOutputNo[] = {4,5,6,7};
+/*
+  ロータリーエンコーダーで使用しているピン番号を設定
+*/
+const int rotaryEncoderInputNo[] = {8,9,10,11,12,13,19,20,21,22,23,24};
 
+/*
+　配列のサイズ
+*/
+const int matrixPinInputNoSize = sizeof(matrixPinInputNo) / sizeof(int);
+const int matrixPinOutputNoSize = sizeof(matrixPinOutputNo) / sizeof(int);
+const int rotaryEncoderInputNoSize = sizeof(rotaryEncoderInputNo) / sizeof(int);
 
-
+/*
+　マトリックスで押された情報を保存する
+　[出力先][入力先]
+*/
+boolean matrixState [matrixPinOutputNoSize][matrixPinInputNoSize] = {};
+/*
+　ロータリーエンコーダーの情報を保存する
+  [入力先]
+*/
+boolean rotaryEncoderState [rotaryEncoderInputNoSize] = {};
 
 void setup() {
   // put your setup code here, to run once:
@@ -45,9 +53,6 @@ void setup() {
   sendStartMessage("Initialize Strat");
   initialize();
   sendStartMessage("Initialize End");
-
-
-  sendStartMessage("Loop Method Strat");
 }
 
 /*
@@ -58,61 +63,35 @@ void initialize(){
   /*
     ピンが受信か送信かを設定
   */
-  pinMode(switchPin0, INPUT);
-  pinMode(switchPin1, INPUT);
-  pinMode(switchPin2, INPUT);
-  pinMode(switchPin3, INPUT);
-  pinMode(switchPin4, OUTPUT);
-  pinMode(switchPin5, OUTPUT);
-  pinMode(switchPin6, OUTPUT);
-  pinMode(switchPin7, OUTPUT);
-
-  pinMode(rotoryswitch1N, INPUT);
-  pinMode(rotoryswitch1A, INPUT);
-  pinMode(rotoryswitch2N, INPUT);
-  pinMode(rotoryswitch2A, INPUT);
-  pinMode(rotoryswitch3N, INPUT);
-  pinMode(rotoryswitch3A, INPUT);
-  pinMode(rotoryswitch4N, INPUT);
-  pinMode(rotoryswitch4A, INPUT);
-  pinMode(rotoryswitch5N, INPUT);
-  pinMode(rotoryswitch5A, INPUT);
-  pinMode(rotoryswitch6N, INPUT);
-  pinMode(rotoryswitch6A, INPUT);
+  //matrix input setup
+  sendMessage("matrix input setup start"); 
+  for(int i = 0; i < matrixPinInputNoSize; i++){
+    pinMode(matrixPinInputNo[i], INPUT);
+  }
+  //matrix output set
+  for(int i = 0; i < matrixPinOutputNoSize; i++){
+    pinMode(matrixPinOutputNo[i], OUTPUT);
+  }
+  //RotaryEncoder intput set
+  for(int i = 0; i < rotaryEncoderInputNoSize; i++){
+    pinMode(rotaryEncoderInputNo[i], INPUT);
+  }
+  sendMessage("matrix input setup end");
 
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
+  sendStartMessage("Loop Method Strat");
+  
+  readMatrixPin();
+  readRotaryEncoder();
 
-  sendStartMessage("Switch Status start");
-
-  outputPinStatusMessage(switchPin0,"switchPin0");
-  outputPinStatusMessage(switchPin1,"switchPin1");
-  outputPinStatusMessage(switchPin2,"switchPin2");
-  outputPinStatusMessage(switchPin3,"switchPin3");
-  outputPinStatusMessage(switchPin4,"switchPin4");
-  outputPinStatusMessage(switchPin5,"switchPin5");
-  outputPinStatusMessage(switchPin6,"switchPin6");
-  outputPinStatusMessage(switchPin7,"switchPin7");
-
-  outputPinStatusMessage(rotoryswitch1N,"rotoryswich1N");
-  outputPinStatusMessage(rotoryswitch1A,"rotoryswich1A");
-  outputPinStatusMessage(rotoryswitch2N,"rotoryswich2N");
-  outputPinStatusMessage(rotoryswitch2A,"rotoryswich2A");
-  outputPinStatusMessage(rotoryswitch3N,"rotoryswich3N");
-  outputPinStatusMessage(rotoryswitch3A,"rotoryswich3A");
-  outputPinStatusMessage(rotoryswitch4N,"rotoryswich4N");
-  outputPinStatusMessage(rotoryswitch4A,"rotoryswich4A");
-  outputPinStatusMessage(rotoryswitch5N,"rotoryswich5N");
-  outputPinStatusMessage(rotoryswitch5A,"rotoryswich5A");
-  outputPinStatusMessage(rotoryswitch6N,"rotoryswich6N");
-  outputPinStatusMessage(rotoryswitch6A,"rotoryswich6A");
-
-
-
-  sendStartMessage("Switch Status End");
-  delay(1000);//1000msec待機(1秒待機)
+  sendStartMessage("Loop Method End");
+    // シリアル開始（デバックの場合）
+  if (debug == true) {
+    delay(1000);//1000msec待機(1秒待機)
+  }
 }
 
 
@@ -125,11 +104,70 @@ void sendStartMessage(String _message){
   }
 }
 
+void sendMessage(String _message){
+  if(debug == true){
+    Serial.println(_message);
+  }
+}
+
+
 /*
-    ピンのステータス取得
+  ピンのステータス取得（メッセージver)
 */
 void outputPinStatusMessage(int _pinNo, String _pinNmae){
   boolean _pinStatus;
   _pinStatus = digitalRead(_pinNo);
   Serial.println( _pinNmae + " pin status : " + String(_pinStatus));
 }
+
+/*
+　ピンのステータス取得
+*/
+boolean outputMatrixPinStatus(int _pinNo){
+  boolean _pinStatus;
+  _pinStatus = digitalRead(_pinNo);
+  return _pinStatus;
+}
+
+/*
+  マトリックスのピン情報を取得する
+*/
+void readMatrixPin(){
+  //最初にすべての電源をOFFにする
+  for(int i = 0; i < matrixPinOutputNoSize; i++){
+    // 処理対象OUTのPINをLOWにする
+    digitalWrite(matrixPinOutputNo[i], LOW);
+  }
+
+  Serial.println("[OUTPUT] - [INPUT]");
+  //matrix output set
+  for(int i = 0; i < matrixPinOutputNoSize; i++){
+    //処理対象のOUTPUTをONにする
+    digitalWrite(matrixPinOutputNo[i], HIGH);
+    //何を押されているかをチェックする(i行目のチェック)
+    for(int j = 0; j < matrixPinInputNoSize; j++){
+      matrixState[i][j] = outputMatrixPinStatus(matrixPinInputNo[j]);
+      Serial.println(" pin status ["+String(matrixPinOutputNo[i])+"]["+String(matrixPinInputNo[j])+"] : " + String(matrixState[i][j]));
+    }
+    
+    // 処理対象のOUTPUTをLOWにする
+    digitalWrite(matrixPinOutputNo[i], LOW);
+  }
+
+  //最初にすべての電源をOFFにする
+  for(int i = 0; i < matrixPinOutputNoSize; i++){
+    // 処理対象OUTのPINをLOWにする
+    digitalWrite(matrixPinOutputNo[i], LOW);
+  }
+}
+
+/*
+  ロータリーエンコーダーの読み取り
+*/
+void readRotaryEncoder(){
+  for(int i = 0; i < rotaryEncoderInputNoSize; i++){
+      rotaryEncoderState[i] = outputMatrixPinStatus(rotaryEncoderInputNo[i]);
+      Serial.println(" pin status ["+String(rotaryEncoderInputNo[i])+"] : " + String(rotaryEncoderState[i]));
+    }
+}
+
